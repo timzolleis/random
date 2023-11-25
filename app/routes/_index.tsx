@@ -1,6 +1,7 @@
 import type {MetaFunction} from "@remix-run/node";
 import {Link} from "@remix-run/react";
 import {Button} from "~/components/ui/button";
+import {AddFields} from "~/components/features/AddFields";
 
 export const meta: MetaFunction = () => {
     return [
@@ -15,7 +16,7 @@ export default function Index() {
             <div className="container px-4 md:px-6">
                 <div className="flex flex-col items-center space-y-4 text-center">
                     <div className="space-y-2">
-                        <h1 className="text-3xl font-bold font-inter tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
+                        <h1 className="text-3xl font-medium font-inter tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl/none">
                             Generate random data. Fast.
                         </h1>
                         <p className="mx-auto max-w-[700px] text-zinc-500 md:text-xl dark:text-zinc-400">
@@ -23,10 +24,14 @@ export default function Index() {
                             interface.
                         </p>
                     </div>
-                    <Button className={"rounded-full"}
-                    >
-                       Start generating
-                    </Button>
+                    <div className={"rounded-md border p-4 w-full max-w-5xl border-dashed "}>
+                        <AddFields/>
+                    </div>
+
+
+
+
+
                 </div>
             </div>
         </section>
