@@ -2,6 +2,7 @@
 export default {
     ignoredRouteFiles: ["**/.*"],
     tailwind: true
+
     // appDirectory: "app",
     // assetsBuildDirectory: "public/build",
     // publicPath: "/build/",
