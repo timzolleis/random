@@ -7,6 +7,7 @@ type FieldStore = {
     addField: (field: Field) => void;
     removeField: (field: Field) => void;
     updateField: (field: Field) => void;
+    setFields: (fields: Field[]) => void;
     clearFields: () => void;
 }
 
@@ -43,6 +44,11 @@ export const useFieldStore = create<FieldStore>()(
             clearFields: () => {
                 set({
                     fields: [],
+                });
+            },
+            setFields: (fields) => {
+                set({
+                    fields,
                 });
             }
         }),

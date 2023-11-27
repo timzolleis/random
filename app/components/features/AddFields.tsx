@@ -12,7 +12,6 @@ import {
 } from "~/components/ui/command";
 import {Input} from "~/components/ui/input";
 import {useHotkeys} from "react-hotkeys-hook";
-import {MoveLeft, MoveRight} from "lucide-react";
 import {availableFields} from "~/constants/available-fields";
 import {ShortcutHint} from "~/components/features/shortcut/shortcut-hint";
 import {useFieldStore} from "~/stores/current-field-store";
@@ -20,21 +19,18 @@ import {createId} from "@paralleldrive/cuid2";
 import {useStepStore} from "~/stores/step-store";
 import {FieldComponent} from "~/components/features/field/field";
 import {ClientOnly} from "remix-utils/client-only";
+import {Reorder} from "framer-motion";
+import {StepSelector} from "~/components/features/steps/step-selector";
+import {AddValidationDialog} from "~/components/features/validation/add-validation-dialog";
+import {useValidationStore} from "~/stores/validation-store";
+import {ValidationRuleComponent} from "~/components/features/validation/validation-rule";
+import {useFetcher} from "@remix-run/react";
+import {Slider} from "~/components/ui/slider";
 
 
 type DialogProps = {
     open: boolean,
     setOpen: (value: boolean) => void
-}
-const StepSelector = () => {
-    const stepStore = useStepStore()
-    return <div className={"px-3 py-1 flex items-center gap-2 text-muted-foreground"}>
-        <SectionNumber>{stepStore.step}/2</SectionNumber>
-        <div className={"hover:cursor-pointer"}>
-            {stepStore.step === 1 && <MoveRight onClick={() => stepStore.increment()}/>}
-            {stepStore.step === 2 && <MoveLeft onClick={() => stepStore.decrement()}/>}
-        </div>
-    </div>
 }
 
 
@@ -79,7 +75,6 @@ const AddFieldDialog = ({open, setOpen}: {
     open: boolean,
     setOpen: (value: boolean) => void
 }) => {
-    const [fieldType, setFieldType] = useState("")
     const [fieldName, setFieldName] = useState("")
     const fieldStore = useFieldStore()
     const stepStore = useStepStore()
@@ -88,14 +83,12 @@ const AddFieldDialog = ({open, setOpen}: {
         stepStore.increment()
     }
     const handleSelectFieldType = (value: string) => {
-        setFieldType(value)
-        fieldStore.addField({id: createId(), name: fieldName, type: fieldType})
+        fieldStore.addField({id: createId(), name: fieldName, type: value})
         reset()
     }
     const reset = () => {
         stepStore.reset()
         setFieldName("")
-        setFieldType("")
         setOpen(false)
     }
 
@@ -111,8 +104,30 @@ const AddFieldDialog = ({open, setOpen}: {
 
 export const AddFields = () => {
     const [showAddFieldDialog, setShowAddFieldDialog] = useState(false)
+    const [showAddValidationDialog, setShowAddValidationDialog] = useState(false)
+    const [sliderValue, setSliderValue] = useState([10])
     const fieldStore = useFieldStore();
+    const validationStore = useValidationStore();
     useHotkeys("f", () => setShowAddFieldDialog(true), {preventDefault: true})
+    useHotkeys("r", () => setShowAddValidationDialog(true), {preventDefault: true})
+    const fetcher = useFetcher();
+    const clear = () => {
+        fieldStore.clearFields();
+        validationStore.clearValidations();
+    }
+    const generate = () => {
+        fetcher.submit({
+            data: JSON.stringify({
+                fields: fieldStore.fields,
+                validations: validationStore.validations,
+                records: sliderValue[0]
+            })
+        }, {
+            method: "post",
+            action: "/generate"
+        })
+    }
+
 
     return (
         <>
@@ -125,26 +140,61 @@ export const AddFields = () => {
                         Add fields to your dataset. Drag to reorder
                     </SectionDescription>
                     <ClientOnly>
-                        {() => <div className={"flex flex-wrap items-center gap-2 mt-3"}>
-                            {fieldStore.fields.map(field => (
-                                    <FieldComponent field={field} key={field.id}/>
-                                )
-                            )}
-                            <Button size={"sm"}
-                                    className={"rounded-full bg-transparent text-primary border-primary border-dotted shadow-none border hover:bg-transparent"}>
-                                <ShortcutHint shortcut={"F"}/>
-                                Add
-                                field</Button>
-                        </div>}
+                        {() => <Reorder.Group axis={"x"} onReorder={(value) => fieldStore.setFields(value)}
+                                              values={fieldStore.fields}>
+                            <div className={"flex flex-wrap items-center gap-2 mt-3"}>
+                                {fieldStore.fields.map(field => (
+                                        <Reorder.Item whileDrag={{scale: 1.1}} value={field} key={field.id}>
+                                            <FieldComponent field={field} key={field.id}/>
+                                        </Reorder.Item>
+                                    )
+                                )}
+                                <Button size={"sm"}
+                                        onClick={() => setShowAddFieldDialog(true)}
+                                        className={"rounded-full bg-transparent text-primary border-primary border-dotted shadow-none border hover:bg-transparent"}>
+                                    <ShortcutHint shortcut={"F"}/>
+                                    Add
+                                    field</Button>
+                            </div>
+                        </Reorder.Group>}
                     </ClientOnly>
                 </Section>
                 <Section>
                     <SectionNumber>02</SectionNumber>
-                    <SectionHeader>Include corrupt data</SectionHeader>
+                    <SectionHeader>Data validation</SectionHeader>
                     <SectionDescription>
                         You can include corrupt data to test your application's error handling
                     </SectionDescription>
+                    <div className={"mt-3"}>
+                        <Button size={"sm"}
+                                onClick={() => setShowAddValidationDialog(true)}
+                                className={"rounded-full bg-transparent text-primary border-primary border-dotted shadow-none border hover:bg-transparent"}>
+                            <ShortcutHint shortcut={"R"}/>
+                            Add
+                            rule</Button>
+                    </div>
+                    <AddValidationDialog open={showAddValidationDialog} setOpen={setShowAddValidationDialog}/>
+                    <div className={"grid gap-2 mt-3"}>
+                        <ClientOnly>
+                            {() => validationStore.validations.map(validation => (
+                                <ValidationRuleComponent key={validation.id} validation={validation}/>
+                            ))}
+                        </ClientOnly>
+
+                    </div>
                 </Section>
+                <div className={"text-center space-y-2"}>
+                    <Slider defaultValue={sliderValue} onValueChange={(value) => setSliderValue(value)} max={10000}/>
+                    <p className={"text-muted-foreground text-xs"}>{sliderValue} Records</p>
+                </div>
+
+                <div className={"flex flex-col w-full items-center gap-2"}>
+                    <Button onClick={() => generate()} className={"w-[200px]"}>Generate</Button>
+                    <Button onClick={() => clear()} variant={"secondary"} size={"sm"} type={"button"}
+                            className={"hover:cursor-pointer"}>Clear
+                        everything
+                    </Button>
+                </div>
             </SectionContainer></>
     )
 }

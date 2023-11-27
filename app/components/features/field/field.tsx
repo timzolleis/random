@@ -3,13 +3,16 @@ import {ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger,} f
 import {useFieldStore} from "~/stores/current-field-store";
 import {useHotkeys} from "react-hotkeys-hook";
 import {useEffect, useState} from "react";
+import {useMotionValue} from "framer-motion";
 
 export const FieldComponent = ({field}: { field: Field }) => {
     const fieldStore = useFieldStore()
     const [showMenu, setShowMenu] = useState(false)
     useHotkeys<HTMLDivElement>("x", () => {
-        console.log("Pressed")
-        showMenu && fieldStore.removeField(field)
+        if(showMenu){
+            console.log("Removing")
+            showMenu && fieldStore.removeField(field)
+        }
     }, {preventDefault: true})
     return <ContextMenu onOpenChange={setShowMenu}>
         <ContextMenuTrigger asChild={true}>

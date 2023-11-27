@@ -1,6 +1,4 @@
 import type {MetaFunction} from "@remix-run/node";
-import {Link} from "@remix-run/react";
-import {Button} from "~/components/ui/button";
 import {AddFields} from "~/components/features/AddFields";
 
 export const meta: MetaFunction = () => {
@@ -9,10 +7,9 @@ export const meta: MetaFunction = () => {
         {name: "description", content: "Welcome to Remix!"},
     ];
 };
-
 export default function Index() {
     return (
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
+        <section className="w-full py-12">
             <div className="container px-4 md:px-6">
                 <div className="flex flex-col items-center space-y-4 text-center">
                     <div className="space-y-2">
@@ -27,10 +24,6 @@ export default function Index() {
                     <div className={"rounded-md border p-4 w-full max-w-5xl border-dashed "}>
                         <AddFields/>
                     </div>
-
-
-
-
 
                 </div>
             </div>
