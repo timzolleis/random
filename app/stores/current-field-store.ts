@@ -2,15 +2,52 @@ import {Field} from "~/types/field";
 import {create} from "zustand";
 import {persist} from "zustand/middleware";
 
-type CurrentFieldStore = {
-    fieldList: Field[],
-    addField: (field: Field) => void,
-    removeField: (field: Field) => void,
-    clearFieldList: () => void,
+type FieldStore = {
+    fields: Field[];
+    addField: (field: Field) => void;
+    removeField: (field: Field) => void;
+    updateField: (field: Field) => void;
+    clearFields: () => void;
 }
 
-export const useCurrentFieldStore = create<CurrentFieldStore>()(
-    persist((set, state) => ({
-        
-    }))
-)
+export const useFieldStore = create<FieldStore>()(
+    persist(
+        (set, state) => ({
+            fields: [],
+            addField: (field) => {
+                if (state().fields.find((item) => item.id === field.id)) {
+                    return;
+                }
+                set((state) => ({
+                    fields: [
+                        field,
+                        ...state.fields,
+                    ],
+                }));
+            },
+            updateField: (field) => {
+                set((state) => ({
+                    fields: state.fields.map((oldField) => {
+                        if (oldField.id === field.id) {
+                            return field;
+                        }
+                        return oldField;
+                    }),
+                }));
+            },
+            removeField: (field) => {
+                set((state) => ({
+                    fields: state.fields.filter((oldField) => oldField.id !== field.id),
+                }));
+            },
+            clearFields: () => {
+                set({
+                    fields: [],
+                });
+            }
+        }),
+        {
+            name: 'fields',
+        }
+    )
+);

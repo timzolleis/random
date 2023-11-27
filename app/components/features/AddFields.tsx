@@ -14,34 +14,31 @@ import {Input} from "~/components/ui/input";
 import {useHotkeys} from "react-hotkeys-hook";
 import {MoveLeft, MoveRight} from "lucide-react";
 import {availableFields} from "~/constants/available-fields";
-import type {Field} from "~/types/field";
 import {ShortcutHint} from "~/components/features/shortcut/shortcut-hint";
+import {useFieldStore} from "~/stores/current-field-store";
+import {createId} from "@paralleldrive/cuid2";
+import {useStepStore} from "~/stores/step-store";
+import {FieldComponent} from "~/components/features/field/field";
+import {ClientOnly} from "remix-utils/client-only";
 
 
 type DialogProps = {
     open: boolean,
     setOpen: (value: boolean) => void
 }
-
-type StepSelectProps = {
-    step: number,
-    setStep: (value: number) => void
-}
-
-
-
-const StepSelector = ({step, setStep}: { step: number, setStep: (value: number) => void }) => {
+const StepSelector = () => {
+    const stepStore = useStepStore()
     return <div className={"px-3 py-1 flex items-center gap-2 text-muted-foreground"}>
-        <SectionNumber>{step}/2</SectionNumber>
+        <SectionNumber>{stepStore.step}/2</SectionNumber>
         <div className={"hover:cursor-pointer"}>
-            {step === 1 && <MoveRight onClick={() => setStep(step + 1)}/>}
-            {step === 2 && <MoveLeft onClick={() => setStep(step - 1)}/>}
+            {stepStore.step === 1 && <MoveRight onClick={() => stepStore.increment()}/>}
+            {stepStore.step === 2 && <MoveLeft onClick={() => stepStore.decrement()}/>}
         </div>
     </div>
 }
 
 
-type FieldDialogProps = DialogProps & StepSelectProps & {
+type FieldDialogProps = DialogProps & {
     defaultValue?: string,
     onSelect: (value: string) => void,
 }
@@ -50,7 +47,7 @@ const FieldNameDialog = (props: FieldDialogProps) => {
     const inputRef = useRef<HTMLInputElement>(null)
     return <Dialog open={props.open} onOpenChange={props.setOpen}>
         <DialogContent className={"gap-1 shadow-lg"}>
-            <StepSelector step={props.step} setStep={props.setStep}/>
+            <StepSelector/>
             <Input className={"text-lg"} variant={"ghost"} ref={inputRef} defaultValue={props.defaultValue}
                    onKeyDown={(event) => {
                        if (event.key === "Enter") {
@@ -65,7 +62,7 @@ const FieldNameDialog = (props: FieldDialogProps) => {
 
 const FieldTypeDialog = (props: FieldDialogProps) => {
     return <CommandDialog defaultValue={props.defaultValue} open={props.open} onOpenChange={props.setOpen}>
-        <StepSelector step={props.step} setStep={props.setStep}/>
+        <StepSelector/>
         <CommandInput placeholder="Type a command or search..."/>
         <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
@@ -78,36 +75,35 @@ const FieldTypeDialog = (props: FieldDialogProps) => {
     </CommandDialog>
 }
 
-const AddFieldDialog = ({setFields, open, setOpen}: {
-    setFields: (value: Field) => void,
+const AddFieldDialog = ({open, setOpen}: {
     open: boolean,
     setOpen: (value: boolean) => void
 }) => {
-    const [step, setStep] = useState(1)
-    const [fieldName, setFieldName] = useState("")
     const [fieldType, setFieldType] = useState("")
+    const [fieldName, setFieldName] = useState("")
+    const fieldStore = useFieldStore()
+    const stepStore = useStepStore()
     const handleSelectName = (value: string) => {
         setFieldName(value)
-        setStep(2)
+        stepStore.increment()
     }
     const handleSelectFieldType = (value: string) => {
         setFieldType(value)
-        setFields({name: fieldName, type: fieldType})
+        fieldStore.addField({id: createId(), name: fieldName, type: fieldType})
         reset()
     }
-
     const reset = () => {
-        setStep(1)
+        stepStore.reset()
         setFieldName("")
         setFieldType("")
         setOpen(false)
     }
 
-    if (step === 1) {
-        return <FieldNameDialog setStep={setStep} step={step} open={open} setOpen={setOpen}
+    if (stepStore.step === 1) {
+        return <FieldNameDialog open={open} setOpen={setOpen} defaultValue={fieldName}
                                 onSelect={handleSelectName}/>
-    } else if (step === 2) {
-        return <FieldTypeDialog setStep={setStep} step={step} open={open} setOpen={setOpen}
+    } else {
+        return <FieldTypeDialog open={open} setOpen={setOpen}
                                 onSelect={handleSelectFieldType}/>
     }
 }
@@ -115,15 +111,12 @@ const AddFieldDialog = ({setFields, open, setOpen}: {
 
 export const AddFields = () => {
     const [showAddFieldDialog, setShowAddFieldDialog] = useState(false)
-    const [fields, setFields] = useState<Field[]>([])
+    const fieldStore = useFieldStore();
     useHotkeys("f", () => setShowAddFieldDialog(true), {preventDefault: true})
-    const setField = (value: Field) => {
-        setFields([...fields, value])
-    }
 
     return (
         <>
-            <AddFieldDialog setFields={setField} open={showAddFieldDialog} setOpen={setShowAddFieldDialog}/>
+            <AddFieldDialog open={showAddFieldDialog} setOpen={setShowAddFieldDialog}/>
             <SectionContainer>
                 <Section>
                     <SectionNumber>01</SectionNumber>
@@ -131,18 +124,19 @@ export const AddFields = () => {
                     <SectionDescription>
                         Add fields to your dataset. Drag to reorder
                     </SectionDescription>
-                    <div className={"flex flex-wrap items-center gap-2 mt-3"}>
-                        {fields.map(field => (
-                                <div key={field.name}
-                                     className={"rounded-full bg-primary border-primary inline-flex items-center text-primary-foreground h-8 px-3 text-xs shadow-none border"}>{field.name}</div>
-                            )
-                        )}
-                        <Button size={"sm"}
-                                className={"rounded-full bg-transparent text-primary border-primary border-dotted shadow-none border hover:bg-transparent"}>
-                            <ShortcutHint shortcut={"F"}/>
-                            Add
-                            field</Button>
-                    </div>
+                    <ClientOnly>
+                        {() => <div className={"flex flex-wrap items-center gap-2 mt-3"}>
+                            {fieldStore.fields.map(field => (
+                                    <FieldComponent field={field} key={field.id}/>
+                                )
+                            )}
+                            <Button size={"sm"}
+                                    className={"rounded-full bg-transparent text-primary border-primary border-dotted shadow-none border hover:bg-transparent"}>
+                                <ShortcutHint shortcut={"F"}/>
+                                Add
+                                field</Button>
+                        </div>}
+                    </ClientOnly>
                 </Section>
                 <Section>
                     <SectionNumber>02</SectionNumber>
