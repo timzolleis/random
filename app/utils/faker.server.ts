@@ -33,17 +33,19 @@ export function getValue(fieldType: string, validation?: Validation) {
     if (!generatorFunction) {
         throw new Error(`No generator defined for field: ${fieldType}`);
     }
-    if (validation && validation.type === "MISSING") {
-        const shouldReturnMissing = randomTrue();
-        if (shouldReturnMissing) {
-            return null;
+    if (validation) {
+        if (validation.type === "MISSING") {
+            const shouldReturnMissing = randomTrue();
+            if (shouldReturnMissing) {
+                return {validation, applied: true, value: null};
+            }
+        } else if (validation.type === "INVALID") {
+            const shouldReturnInvalid = randomTrue();
+            if (shouldReturnInvalid) {
+                return {validation, applied: true, value: selectRandomHandler(fieldType)};
+            }
         }
     }
-    if (validation && validation.type === "INVALID") {
-        const shouldReturnInvalid = randomTrue();
-        if (shouldReturnInvalid) {
-            return selectRandomHandler(fieldType)
-        }
-    }
-    return generatorFunction();
+
+    return {validation, applied: false, value: generatorFunction()};
 }
